@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stranger Things: The Byzantine Curse</title>
+    <style>
+        /* --- CSS: CUSTOM FONTS & STYLE --- */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Creepster&display=swap');
+
+        /* Try to load local font if available, fallback to Creepster */
+        @font-face {
+            font-family: 'StrangerThings';
+            src: url('benguiat.ttf'); 
+        }
+
+        :root {
+            --stranger-red: #e71d36;
+            --neon-blue: #00f3ff;
+            --void-black: #050505;
+            --bulb-yellow: #ffea00;
+            --bulb-green: #39ff14;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--void-black);
+            color: #eee;
+            font-family: 'Roboto Mono', monospace;
+            margin: 0;
+            overflow: hidden; 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            user-select: none; 
+        }
+
+        /* UI: HEALTH BAR */
+        #health-hud {
+            position: fixed;
+            top: 15px; 
+            right: 15px;
+            font-family: 'StrangerThings', 'Creepster', serif;
+            font-size: 1.5rem; 
+            color: var(--stranger-red);
+            z-index: 1000;
+            text-shadow: 0 0 5px red;
+            display: none; 
+        }
+
+        /* EFFECTS */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* TITLE */
+        h1.logo {
+            font-family: 'StrangerThings', 'Creepster', serif;
+            color: transparent;
+            -webkit-text-stroke: 2px var(--stranger-red);
+            font-size: 2.5rem; 
+            text-transform: uppercase;
+            text-align: center;
+            letter-spacing: -2px;
+            margin-bottom: 15px; 
+            filter: drop-shadow(0 0 5px var(--stranger-red)) drop-shadow(0 0 15px var(--stranger-red));
+            animation: breathe 4s infinite ease-in-out;
+            line-height: 1;
+        }
+
+        @keyframes breathe {
+            0%, 100% { filter: drop-shadow(0 0 5px var(--stranger-red)) drop-shadow(0 0 10px var(--stranger-red)); }
+            50% { filter: drop-shadow(0 0 10px var(--stranger-red)) drop-shadow(0 0 30px var(--stranger-red)); }
+        }
+
+        /* SCREENS & CONTAINERS */
+        .screen {
+            position: absolute; 
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            background: var(--void-black);
+            padding: 15px; 
+        }
+        
+        .active { display: flex; }
+
+        /* SETTING CARD */
+        .setting-card {
+            border: 3px solid var(--stranger-red);
+            background: rgba(20, 0, 0, 0.8);
+            padding: 10px; 
+            border-radius: 10px;
+            box-shadow: 0 0 25px var(--stranger-red);
+            text-align: center;
+            max-width: 90%;
+            max-height: 60vh; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .setting-card img {
+            max-width: 100%;
+            max-height: 45vh; 
+            width: auto; 
+            object-fit: contain;
+            border: 2px solid #550000;
+        }
+
+        /* CAROUSEL */
+        #carousel-image {
+            max-height: 60vh;
+            max-width: 90%;
+            border: 4px solid var(--stranger-red);
+            box-shadow: 0 0 30px var(--stranger-red);
+            opacity: 0; 
+            transition: opacity 0.5s ease-in-out;
+        }
+        .fade-in-image { opacity: 1 !important; }
+
+        /* DIALOGUE BOX */
+        .dialogue-box {
+            border: 2px solid var(--neon-blue);
+            background: rgba(0, 15, 30, 0.95);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px var(--neon-blue);
+            text-align: left;
+            width: 90%; max-width: 800px; 
+            font-size: 0.95rem; 
+        }
+
+        .character-name {
+            color: var(--neon-blue);
+            font-weight: bold;
+            text-transform: uppercase;
+            display: block;
+            text-shadow: 0 0 5px var(--neon-blue);
+            margin-bottom: 5px;
+        }
+
+        /* BUTTONS */
+        button {
+            background: transparent;
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 10px 20px;
+            font-family: 'StrangerThings', 'Creepster', serif;
+            font-size: 1.2rem; 
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.2s;
+            margin-top: 10px; 
+            letter-spacing: 1px;
+        }
+        
+        button:hover {
+            background: var(--stranger-red);
+            border-color: var(--stranger-red);
+            box-shadow: 0 0 20px var(--stranger-red);
+        }
+
+        /* LEVEL 1: LOGIC GRID */
+        .logic-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px; 
+            margin: 15px 0; 
+            width: 90%; max-width: 800px;
+        }
+        .grid-item {
+            border: 1px solid #555;
+            padding: 15px 5px; 
+            cursor: pointer;
+            background: #1a1a1a;
+            text-align: center;
+            font-family: 'StrangerThings', 'Creepster', serif;
+            font-size: 0.9rem; 
+            transition: 0.2s;
+        }
+
+        /* LEVEL 2 & 4 HUD */
+        .arcade-hud, .scramble-hud {
+            display: flex;
+            justify-content: space-between;
+            width: 90%; max-width: 800px;
+            font-family: 'Creepster', cursive;
+            color: gold;
+            font-size: 1.2rem;
+            margin-bottom: 8px; 
+        }
+
+        /* ARCADE QUESTION BOX */
+        #arcade-question-box {
+             width: 90%; max-width: 800px;
+             background: #111; 
+             padding: 15px; 
+             border: 2px solid lime; 
+             font-family: 'Courier New', monospace; 
+             color: lime; 
+             text-align: left; 
+             box-shadow: 0 0 10px lime;
+        }
+
+        /* LEVEL 4: SCRAMBLE UI */
+        .word-bank {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px; 
+            margin-top: 15px;
+            width: 90%; max-width: 800px;
+        }
+        .scramble-slot {
+            display: inline-block;
+            border-bottom: 2px solid white;
+            min-width: 30px; 
+            margin: 0 4px;
+            color: var(--neon-blue);
+            font-weight: bold;
+        }
+
+        /* FOOTER */
+        footer {
+            position: fixed;
+            bottom: 5px;
+            width: 100%;
+            text-align: center;
+            font-family: 'StrangerThings', 'Creepster', serif;
+            color: #666;
+            font-size: 0.7rem;
+            z-index: 1000;
+        }
+
+        /* ANIMATIONS */
+        .fade-out { opacity: 0; transition: opacity 1s ease; }
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        #red-flash {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #a00;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 998;
+            transition: opacity 0.1s;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scanlines"></div>
+    <div id="red-flash"></div>
+
+    <div id="health-hud">
+        LIVES: <span id="lives-display">❤️❤️❤️❤️❤️</span>
+    </div>
+
+    <div id="setting-screen" class="screen active">
+        <h1 class="logo">STRANGER THINGS<br>THE BYZANTINE CURSE</h1>
+        <div class="setting-card">
+            <img src="setting.png" alt="The Upside Down Classroom">
+        </div>
+        <button onclick="showNarrative()">ENTER CLASS B4</button>
+    </div>
+
+   <div id="narrative-screen" class="screen">
+        <h1 class="logo">THE POSSESSION<br>OF MR. DOMVROS</h1>
+        
+        <p style="color: #bbb; max-width: 800px; text-align: center; margin-top: 10px; line-height: 1.4; font-family: 'Roboto Mono', monospace; font-size: 1.3rem;">
+            1ST MIDDLE SCHOOL OF PYLEA, CLASS B4.<br><br>
+            Mr. Domvros is acting strange. His eyes are black. He has locked the door and declared himself <span style="color:var(--stranger-red)">EMPEROR OF THE CLASSROOM</span>.<br><br>
+            He has been possessed by a strict Byzantine Emperor from the Upside Down. He has started a History Test that never ends.<br><br>
+            You must use your <strong>English Skills</strong> to solve his <strong>History Riddles</strong> and break the curse.<br><br>
+            <span style="color:var(--stranger-red)">Volume ON recommended. Good luck, B4.</span>
+        </p>
+        <button onclick="startGame()">ENTER AT YOUR OWN RISK</button>
+    </div>
+
+    <div id="carousel-screen" class="screen">
+        <img id="carousel-image" src="" alt="Character Sequence">
+    </div>
+
+    <div id="level-1" class="screen">
+        <h1 class="logo" style="font-size: 2rem;">CHAPTER 1:<br>THE NIKA RIOTS</h1>
+        
+        <div class="dialogue-box">
+            <span class="character-name">MARIA P (READING THE CHRONICLE):</span>
+            "The Emperor is angry! We must seat the Factions correctly in the Hippodrome to stop the Riot!"<br>
+            <div style="color:#ccc; font-style: italic; margin-top: 10px; line-height: 1.5; border: 1px solid #555; padding: 10px; background: #111;">
+                "<strong>Maria A.</strong> says the <span style="color:var(--bulb-green)">GREEN</span> faction <em>is sitting</em> next to the Blue one.
+                <strong>Spiros S.</strong> notices that the <span style="color:var(--stranger-red)">RED</span> guards <em>are standing</em> at the very end (Position 4).
+                <strong>Spiros R.</strong> warns that the <span style="color:var(--neon-blue)">BLUE</span> faction is <strong>more aggressive than</strong> the Yellow one, so they are in the first seat (Position 1).
+                Therefore, the <strong>YELLOW</strong> faction takes the only empty seat left."
+            </div>
+        </div>
+
+        <div class="logic-grid" id="bulb-container">
+            <div class="grid-item" id="slot-1" onclick="cycleColor(1)" style="color: #555;">[SEAT 1]</div>
+            <div class="grid-item" id="slot-2" onclick="cycleColor(2)" style="color: #555;">[SEAT 2]</div>
+            <div class="grid-item" id="slot-3" onclick="cycleColor(3)" style="color: #555;">[SEAT 3]</div>
+            <div class="grid-item" id="slot-4" onclick="cycleColor(4)" style="color: #555;">[SEAT 4]</div>
+        </div>
+
+        <button onclick="checkLevel1()">CONNECT</button>
+        <p id="msg-1" style="min-height: 20px; color: var(--stranger-red); font-weight: bold; margin-top:10px; font-family:'StrangerThings', serif; font-size:1.5rem;"></p>
+    </div>
+
+    <div id="level-2" class="screen">
+        <h1 class="logo" style="font-size: 2rem;">CHAPTER 2:<br>THE GRAMMAR SIEGE</h1>
+        
+        <div class="arcade-hud">
+            <div>BOSS: EMPEROR DOMVROS</div>
+            <div id="boss-hp">HP: 8/8</div>
+        </div>
+
+        <div class="dialogue-box" style="min-height: auto;">
+            <span class="character-name">JOHH:</span>
+            "He is throwing rapid-fire questions about History and Grammar! We need 8 correct answers to block the attack!"
+        </div>
+
+        <div id="arcade-question-box">
+            </div>
+        
+        <p id="msg-2" style="min-height: 20px; color: var(--stranger-red); font-weight: bold; margin-top:10px; font-family:'StrangerThings', serif; font-size:1.5rem;"></p>
+    </div>
+
+    <div id="level-3" class="screen">
+        <h1 class="logo" style="font-size: 2rem;">CHAPTER 3:<br>THE FORBIDDEN WORDS</h1>
+        
+        <div class="dialogue-box" style="min-height: auto;">
+            <span class="character-name">STRATIS:</span>
+            "The curse is weakening! We must define the secret words correctly to seal the rift!"
+        </div>
+
+        <div id="vocab-container" style="width:100%; text-align: center; margin-top: 15px;">
+            </div>
+
+        <p id="msg-3" style="min-height: 20px; color: var(--stranger-red); font-weight: bold; margin-top:10px; font-family:'StrangerThings', serif; font-size:1.5rem;"></p>
+    </div>
+
+    <div id="level-4" class="screen">
+        <h1 class="logo" style="font-size: 2rem;">CHAPTER 4:<br>THE GOLDEN AGE</h1>
+        
+        <div class="scramble-hud" style="color: var(--neon-blue);">
+            <div>DECODE HISTORY</div>
+            <div id="scramble-progress">1/4</div>
+        </div>
+
+        <div class="dialogue-box" style="min-height: auto;">
+            <span class="character-name">ELEFTHERIA:</span>
+            "I found the Emperor's secret scroll! Unscramble the sentences to break the spell completely!"
+        </div>
+
+        <div style="margin: 15px; font-size: 1.1rem; min-height: 35px; border-bottom: 1px solid #333; width: 90%; max-width: 800px; padding:5px;" id="scramble-answer-area">
+        </div>
+
+        <div class="word-bank" id="scramble-bank">
+        </div>
+
+        <div style="margin-top:15px;">
+            <button onclick="resetScramble()" style="font-size:0.9rem; border-color:#555; color:#aaa; margin-right:10px; padding: 8px 15px;">RESET</button>
+            <button onclick="checkLevel4()" style="font-size:0.9rem; padding: 8px 15px;">DECODE</button>
+        </div>
+        
+        <p id="msg-4" style="min-height: 20px; color: var(--stranger-red); font-weight: bold; margin-top:10px; font-family:'StrangerThings', serif; font-size:1.2rem;"></p>
+    </div>
+
+    <div id="fail-screen" class="screen" style="background:black; z-index:2000;">
+        <h1 class="logo" style="color: red; -webkit-text-stroke: 2px red;">YOU DIED</h1>
+        <p style="font-size: 1.2rem; text-align:center;">The History Test lasts forever.<br>You are trapped in the classroom.</p>
+        <button onclick="restartCurrentLevel()">TRY AGAIN</button>
+    </div>
+
+    <div id="win-screen" class="screen">
+        <h1 class="logo">CURSE BROKEN</h1>
+        <p style="font-family:'Roboto Mono', monospace; margin-top: 20px; text-align:center; max-width:600px;">
+            You have saved Class B4!<br><br>
+            Mr. Domvros blinks and looks around. "Why is everyone sweating? Did we have a test?"<br><br>
+            You are safe... until the next lesson.
+        </p>
+        <button onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+
+    <footer>
+         Created for Class B4 by Mr. Domvros, Principal of 1st Middle School of Pylea , English and Drama Teacher
+    </footer>
+
+    <script>
+        // --- ASSETS ---
+        // Ensure these files exist in the same folder
+        const audioWrong = new Audio('audio.mp3'); 
+        const audioMain = new Audio('main.mp3'); 
+        audioMain.volume = 0.5;
+
+        // --- CAROUSEL DATA ---
+        // Ensure these images exist in the same folder
+        // UPDATED: Added 'domvros.png' at the end
+        const carouselImages = ['Lucas.png', 'Mike.png', 'Will.png', 'Eleven.png', 'Dustin.png', 'Jonathan.png', 'Nancy.png', 'Demogorgon.png', 'domvros.png'];
+        let carouselIndex = 0;
+
+        // --- GAME STATE ---
+        let currentLives = 5; // Balanced for 4 levels
+        let currentLevelId = 'level-1'; 
+        
+        // Level 1 Data (Logic: Blue->Green->Yellow->Red)
+        //
+        const colors = ["BLUE", "RED", "GREEN", "YELLOW"];
+        let slots = [0, 0, 0, 0]; 
+        
+        // Level 2 Data (8 Hybrid Questions: History + Grammar)
+        // Students involved: Konstantinos, Alex, Simon, Kostis, Markos, Johh
+        // Sources:
+        const arcadeQuestions = [
+            // Q1: Comparative (English) + History Fact
+            { q: "1. The Hagia Sophia is ______ (impressive) church in the Empire.", opts: ["the most impressive", "more impressive"], ans: "the most impressive" },
+            // Q2: Past Simple (History)
+            { q: "2. Heraclius ______ (defeat) the Persians and recovered the Holy Cross.", opts: ["defeated", "was defeating"], ans: "defeated" },
+            // Q3: Present Simple vs Continuous (Stative)
+            { q: "3. Konstantinos ______ (believe) that Greek Fire is dangerous.", opts: ["believes", "is believing"], ans: "believes" },
+            // Q4: History Fact + Comparison
+            { q: "4. Justinian was ______ (ambitious) than his predecessors.", opts: ["more ambitious", "ambitiouser"], ans: "more ambitious" },
+            // Q5: History Fact (Islam/Trade)
+            { q: "5. The Arabs ______ (introduce) spices and paper to the West.", opts: ["introduced", "did introduced"], ans: "introduced" },
+            // Q6: Alex & Kostis (Present Continuous)
+            { q: "6. Look! Alex and Kostis ______ (run) to the walls right now!", opts: ["are running", "run"], ans: "are running" },
+            // Q7: Simon (Past Simple vs Past Continuous)
+            { q: "7. While Simon was reading about the Themes, the bell ______ (ring).", opts: ["rang", "was ringing"], ans: "rang" },
+            // Q8: Markos (Relative Clause)
+            { q: "8. Markos is the soldier ______ saved the Emperor.", opts: ["who", "whose"], ans: "who" }
+        ];
+        let arcadeStage = 0;
+
+        // Level 3 Data (8 Vocab: History Terms + Personality)
+        // Students involved: Emily, Panagiota, Nicole, Anastasia, Eleftheria, Markela, Stratis
+        // Sources:
+        const vocabChallenges = [
+            // History Terms
+            { target: "Emily: The movement that destroyed images.", opts: ["Iconoclasm", "Idolatry", "Heresy"], ans: "Iconoclasm" },
+            { target: "Panagiota: Soldiers who guarded the borders.", opts: ["Akrites", "Knights", "Themes"], ans: "Akrites" },
+            { target: "Nicole: A picture made of small colored stones.", opts: ["Mosaic", "Fresco", "Portrait"], ans: "Mosaic" },
+            { target: "Anastasia: The Great Church built by Justinian.", opts: ["Hagia Sophia", "Pantheon", "Parthenon"], ans: "Hagia Sophia" },
+            // English Personality Adjectives (Unit 1)
+            { target: "Eleftheria: Someone who gives money to others is...", opts: ["Generous", "Selfish", "Mean"], ans: "Generous" },
+            { target: "Markela: Someone who does not like working is...", opts: ["Lazy", "Hardworking", "Clever"], ans: "Lazy" },
+            { target: "Stratis: Someone who talks to everybody is...", opts: ["Sociable", "Shy", "Quiet"], ans: "Sociable" },
+            { target: "Antonis: Someone who always tells the truth is...", opts: ["Honest", "Rude", "Funny"], ans: "Honest" }
+        ];
+        let vocabStage = 0;
+
+        // Level 4 Data (4 Sentences - Syntax & Facts)
+        // Students involved: Stergios, Thomas, Christos, Antonis, Vasilis, Ioanna, Kleon, Vasiliki, George
+        // Sources:
+        const scrambleData = [
+            // Fact: Greek fire was dangerous
+            { correct: ["GREEK", "FIRE", "WAS", "MORE", "DANGEROUS", "THAN", "ARROWS"], mixed: ["DANGEROUS", "WAS", "THAN", "ARROWS", "FIRE", "MORE", "GREEK"] },
+            // Fact: Basil II strongest
+            { correct: ["BASIL", "WAS", "THE", "STRONGEST", "EMPEROR", "OF", "THE", "DYNASTY"], mixed: ["EMPEROR", "STRONGEST", "THE", "OF", "WAS", "DYNASTY", "THE", "BASIL"] },
+            // Fact: Justinian did not flee riots
+            { correct: ["JUSTINIAN", "DID", "NOT", "LEAVE", "THE", "CITY", "DURING", "THE", "RIOTS"], mixed: ["LEAVE", "NOT", "DID", "RIOTS", "THE", "DURING", "CITY", "THE", "JUSTINIAN"] },
+            // Fact: Arab trade
+            { correct: ["WE", "HAVE", "LEARNED", "THAT", "ARABS", "TRADED", "SPICES", "AND", "PAPER"], mixed: ["TRADED", "HAVE", "ARABS", "PAPER", "THAT", "AND", "SPICES", "LEARNED", "WE"] }
+        ];
+        let scrambleStage = 0;
+        let scrambleUserBuild = [];
+
+        // --- FUNCTIONS ---
+
+        function showNarrative() {
+            const settingScreen = document.getElementById('setting-screen');
+            settingScreen.classList.add('fade-out');
+            setTimeout(() => {
+                settingScreen.classList.remove('active');
+                settingScreen.classList.remove('fade-out'); 
+                document.getElementById('narrative-screen').classList.add('active');
+            }, 1000); 
+        }
+
+        function startGame() {
+            audioMain.currentTime = 0;
+            audioMain.play().catch(e => console.log("Main Audio error", e));
+
+            const narrativeScreen = document.getElementById('narrative-screen');
+            narrativeScreen.classList.add('fade-out');
+            setTimeout(() => {
+                narrativeScreen.classList.remove('active');
+                narrativeScreen.classList.remove('fade-out');
+                document.getElementById('carousel-screen').classList.add('active');
+                runCarousel();
+            }, 1000); 
+        }
+
+        function runCarousel() {
+            if (carouselIndex < carouselImages.length) {
+                const imgElement = document.getElementById('carousel-image');
+                imgElement.src = carouselImages[carouselIndex];
+                setTimeout(() => imgElement.classList.add('fade-in-image'), 50);
+
+                setTimeout(() => {
+                    imgElement.classList.remove('fade-in-image');
+                    setTimeout(() => {
+                        carouselIndex++;
+                        runCarousel();
+                    }, 500);
+                }, 2000); 
+            } else {
+                endCarousel();
+            }
+        }
+
+        function endCarousel() {
+             fadeAudio(audioMain);
+             document.getElementById('carousel-screen').classList.remove('active');
+             document.getElementById('health-hud').style.display = 'block';
+             enterLevel('level-1');
+        }
+
+        function enterLevel(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            currentLevelId = id;
+            if(id === 'level-1') currentLives = 5;
+            updateLivesDisplay();
+            
+            if(id === 'level-2') { arcadeStage = 0; loadArcadeQuestion(); }
+            if(id === 'level-3') { vocabStage = 0; loadVocab(); }
+            if(id === 'level-4') { 
+                scrambleStage = 0; 
+                updateScrambleProgress();
+                resetScramble(); 
+            }
+        }
+
+        function updateLivesDisplay() {
+            let hearts = "";
+            for(let i=0; i<currentLives; i++) hearts += "❤️";
+            document.getElementById('lives-display').innerText = hearts;
+        }
+
+        function loseLife() {
+            currentLives--;
+            updateLivesDisplay();
+            triggerShake();
+            if(currentLives <= 0) {
+                setTimeout(() => {
+                    document.getElementById('fail-screen').classList.add('active');
+                }, 500);
+            }
+        }
+
+        function restartCurrentLevel() {
+            document.getElementById('fail-screen').classList.remove('active');
+            currentLives = 5; // Reset lives on retry
+            updateLivesDisplay();
+            enterLevel(currentLevelId);
+        }
+
+        function fadeAudio(audio) {
+            let fadeInterval = setInterval(() => {
+                if (audio.volume > 0.05) audio.volume -= 0.05;
+                else { audio.pause(); clearInterval(fadeInterval); }
+            }, 200);
+        }
+
+        function triggerShake() {
+            audioWrong.currentTime = 0; 
+            audioWrong.play().catch(e => console.log("Audio error", e));
+            document.body.classList.add('shake');
+            setTimeout(() => document.body.classList.remove('shake'), 500);
+            const flash = document.getElementById('red-flash');
+            flash.style.opacity = '0.4';
+            setTimeout(() => flash.style.opacity = '0', 200);
+        }
+
+        // --- LEVEL 1 LOGIC ---
+        function cycleColor(slotNum) {
+            const index = slotNum - 1;
+            slots[index]++;
+            if(slots[index] >= colors.length) slots[index] = 0;
+            const el = document.getElementById(`slot-${slotNum}`);
+            const colName = colors[slots[index]];
+            el.innerText = colName;
+            
+            let cssColor = '#fff';
+            if(colName === "BLUE") cssColor = "#00f3ff";
+            if(colName === "RED") cssColor = "#e71d36";
+            if(colName === "GREEN") cssColor = "#39ff14";
+            if(colName === "YELLOW") cssColor = "#ffea00";
+
+            el.style.color = cssColor;
+            el.style.borderColor = cssColor;
+            el.style.boxShadow = `0 0 10px ${cssColor}`;
+        }
+
+        function checkLevel1() {
+            const s1 = document.getElementById('slot-1').innerText;
+            const s2 = document.getElementById('slot-2').innerText;
+            const s3 = document.getElementById('slot-3').innerText;
+            const s4 = document.getElementById('slot-4').innerText;
+
+            // Logic: Blue(1), Green(2), Yellow(3), Red(4)
+            if (s1 === "BLUE" && s2 === "GREEN" && s3 === "YELLOW" && s4 === "RED") {
+                 enterLevel('level-2');
+            } else {
+                document.getElementById('msg-1').innerText = "WRONG ORDER!";
+                loseLife();
+            }
+        }
+
+        // --- LEVEL 2 LOGIC ---
+        function loadArcadeQuestion() {
+            const qBox = document.getElementById('arcade-question-box');
+            if(arcadeStage < arcadeQuestions.length) {
+                const q = arcadeQuestions[arcadeStage];
+                let html = `> QUESTION ${arcadeStage+1}/8<br><br>${q.q}<br><div style="display:flex; justify-content:center; gap:10px; margin-top:15px; flex-wrap:wrap;">`;
+                q.opts.forEach(opt => {
+                    html += `<button onclick="checkLevel2('${opt}')" style="font-size: 0.9rem; padding: 8px 15px; border-color: lime; color: lime; font-family:'Courier New', monospace; text-shadow:none; box-shadow:none; margin-top:0;">${opt}</button>`;
+                });
+                html += `</div>`;
+                qBox.innerHTML = html;
+                document.getElementById('boss-hp').innerText = `HP: ${8 - arcadeStage}/8`;
+            } else {
+                enterLevel('level-3');
+            }
+        }
+
+        function checkLevel2(ans) {
+            const correct = arcadeQuestions[arcadeStage].ans;
+            if(ans === correct) {
+                arcadeStage++;
+                loadArcadeQuestion();
+                document.getElementById('msg-2').innerText = "CORRECT!";
+                setTimeout(() => document.getElementById('msg-2').innerText = "", 1000);
+            } else {
+                document.getElementById('msg-2').innerText = "WRONG ANSWER!";
+                loseLife();
+            }
+        }
+
+        // --- LEVEL 3 LOGIC ---
+        function loadVocab() {
+            const vContainer = document.getElementById('vocab-container');
+            if(vocabStage < vocabChallenges.length) {
+                const v = vocabChallenges[vocabStage];
+                let html = `
+                <div style="text-align:center; margin-bottom:15px;">
+                    <div style="font-size: 1.4rem; font-family: 'StrangerThings', serif; color: var(--stranger-red);">WORD ${vocabStage+1}/8:<br>${v.target}</div>
+                    <div style="margin-top: 10px;">
+                `;
+                v.opts.forEach(opt => {
+                    html += `<button onclick="checkLevel3('${opt}')" style="font-size: 0.95rem; margin:0 5px; padding: 8px 15px;">${opt}</button>`;
+                });
+                html += `</div></div>`;
+                vContainer.innerHTML = html;
+            } else {
+                enterLevel('level-4');
+            }
+        }
+
+        function checkLevel3(ans) {
+            const correct = vocabChallenges[vocabStage].ans;
+            if(ans === correct) {
+                vocabStage++;
+                loadVocab();
+                document.getElementById('msg-3').innerText = "MATCHED!";
+                setTimeout(() => document.getElementById('msg-3').innerText = "", 1000);
+            } else {
+                document.getElementById('msg-3').innerText = "INCORRECT!";
+                loseLife();
+            }
+        }
+
+        // --- LEVEL 4 LOGIC ---
+        function updateScrambleProgress() {
+             document.getElementById('scramble-progress').innerText = `${scrambleStage + 1}/4`;
+        }
+
+        function resetScramble() {
+            scrambleUserBuild = [];
+            renderScramble();
+            document.getElementById('msg-4').innerText = "";
+        }
+
+        function renderScramble() {
+            const currentMixed = scrambleData[scrambleStage].mixed;
+            const ansArea = document.getElementById('scramble-answer-area');
+            ansArea.innerHTML = scrambleUserBuild.map(w => `<span class="scramble-slot">${w}</span>`).join(" ");
+
+            const bankArea = document.getElementById('scramble-bank');
+            bankArea.innerHTML = "";
+            
+            currentMixed.forEach(word => {
+                const totalInBank = currentMixed.filter(w => w === word).length;
+                const usedCount = scrambleUserBuild.filter(w => w === word).length;
+                
+                if(usedCount < totalInBank) {
+                    const btn = document.createElement('button');
+                    btn.innerText = word;
+                    btn.style.margin = "4px";
+                    btn.style.padding = "8px 12px";
+                    btn.style.fontSize = "0.9rem";
+                    btn.style.marginTop = "0";
+                    btn.onclick = () => { scrambleUserBuild.push(word); renderScramble(); };
+                    bankArea.appendChild(btn);
+                }
+            });
+        }
+
+        function checkLevel4() {
+            const attempt = scrambleUserBuild.join(" ");
+            const target = scrambleData[scrambleStage].correct.join(" ");
+            const msg = document.getElementById('msg-4');
+            const greenColor = getComputedStyle(document.documentElement).getPropertyValue('--bulb-green').trim();
+            const redColor = getComputedStyle(document.documentElement).getPropertyValue('--stranger-red').trim();
+
+            if(attempt === target) {
+                msg.style.color = greenColor;
+                msg.innerText = "SIGNAL DECODED!";
+                scrambleStage++;
+
+                if(scrambleStage < scrambleData.length) {
+                    setTimeout(() => {
+                         updateScrambleProgress();
+                         resetScramble();
+                    }, 1000);
+                } else {
+                    setTimeout(() => {
+                        enterLevel('win-screen');
+                    }, 1000);
+                }
+            } else {
+                msg.style.color = redColor;
+                msg.innerText = "SYNTAX ERROR!";
+                loseLife();
+                setTimeout(() => {
+                     msg.innerText = "";
+                     resetScramble();
+                }, 1000);
+            }
+        }
+
+        // --- KEYBOARD SUPPORT (The "Enter" Button) ---
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Enter") {
+                // 1. Setting Screen -> Go to Narrative
+                if (document.getElementById('setting-screen').classList.contains('active')) {
+                    showNarrative();
+                } 
+                // 2. Narrative Screen -> Start Game
+                else if (document.getElementById('narrative-screen').classList.contains('active')) {
+                    startGame();
+                } 
+                // 3. Level 1 -> Submit Code
+                else if (document.getElementById('level-1').classList.contains('active')) {
+                    checkLevel1();
+                } 
+                // 4. Level 4 -> Decode Sentence
+                else if (document.getElementById('level-4').classList.contains('active')) {
+                    checkLevel4();
+                } 
+                // 5. Fail Screen -> Try Again
+                else if (document.getElementById('fail-screen').classList.contains('active')) {
+                    restartCurrentLevel();
+                } 
+                // 6. Win Screen -> Play Again
+                else if (document.getElementById('win-screen').classList.contains('active')) {
+                    location.reload();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
