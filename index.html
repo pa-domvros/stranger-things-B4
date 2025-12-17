@@ -67,7 +67,7 @@
             font-family: 'StrangerThings', 'Creepster', serif;
             color: transparent;
             -webkit-text-stroke: 2px var(--stranger-red);
-            font-size: 2.5rem; 
+            font-size: 2.3rem; 
             text-transform: uppercase;
             text-align: center;
             letter-spacing: -2px;
@@ -77,7 +77,28 @@
             line-height: 1;
         }
 
-        @keyframes breathe {
+        
+        /* AUDIO TOAST (shows when browser blocks autoplay / to unmute) */
+        #audio-toast{
+            position: fixed;
+            left: 50%;
+            bottom: 18px;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.78);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            z-index: 10000;
+            display: none;
+            box-shadow: 0 0 18px rgba(231, 29, 54, 0.35);
+            cursor: pointer;
+            user-select: none;
+        }
+        #audio-toast:hover{
+            transform: translateX(-50%) scale(1.02);
+        }
+    @keyframes breathe {
             0%, 100% { filter: drop-shadow(0 0 5px var(--stranger-red)) drop-shadow(0 0 10px var(--stranger-red)); }
             50% { filter: drop-shadow(0 0 10px var(--stranger-red)) drop-shadow(0 0 30px var(--stranger-red)); }
         }
@@ -367,7 +388,7 @@
         <div class="setting-card">
             <img src="setting.png" alt="The Upside Down Classroom">
         </div>
-        <button onclick="showNarrative()">ENTER CLASS B4</button>
+        <button id="enterClassB4Btn" onclick="showNarrative()">ENTER CLASS B4</button>
     </div>
 
     <div id="narrative-screen" class="screen">
@@ -554,7 +575,11 @@
     <script>
         // --- ASSETS ---
 // Ensure these files exist in the same folder
-const audioWrong = new Audio('audio.mp3'); 
+const audioWrong = new Audio('audio.mp3');
+// Intro bed on first page load (loops until first ENTER CLASS B4 click)
+const audioIntro = new Audio('audio.mp3');
+audioIntro.loop = true;
+audioIntro.volume = 0.6; 
 const audioMain = new Audio('main.mp3'); 
 audioMain.volume = 0.5;
 
@@ -597,6 +622,95 @@ function stopAudio(audio){
         audio.currentTime = 0;
     } catch(e) {}
 }
+
+
+
+// --- INTRO AUDIO (audio.mp3) ---
+// Starts looping on the first screen. Autoplay may be blocked by the browser.
+// Strategy: try muted autoplay; if blocked (or muted), show a toast prompting a tap to enable sound.
+// Stops permanently (this session) on the first "ENTER CLASS B4" click.
+let introStopped = false;
+
+function ensureAudioToast(){
+    let toast = document.getElementById('audio-toast');
+    if (toast) return toast;
+    toast = document.createElement('div');
+    toast.id = 'audio-toast';
+    toast.textContent = '🔊 Tap anywhere to enable sound';
+    toast.addEventListener('click', unlockIntroAudio, true);
+    document.body.appendChild(toast);
+    return toast;
+}
+
+function showAudioToast(){
+    ensureAudioToast().style.display = 'block';
+}
+
+function hideAudioToast(){
+    const toast = document.getElementById('audio-toast');
+    if (toast) toast.style.display = 'none';
+}
+
+async function tryAutoplayMuted(){
+    if (introStopped) return;
+    audioIntro.loop = true;
+    audioIntro.volume = 0.6;
+    audioIntro.muted = true; // improves autoplay success rate on many browsers
+    try {
+        await audioIntro.play();
+        // It may be playing muted; prompt user to enable sound.
+        showAudioToast();
+    } catch (e) {
+        // Autoplay blocked; prompt user to tap to start audio.
+        showAudioToast();
+    }
+}
+
+function unlockIntroAudio(e){
+    if (introStopped) return;
+
+    // If the first interaction is the ENTER button, don't bother enabling sound (it stops immediately).
+    const enterBtn = document.getElementById('enterClassB4Btn');
+    if (enterBtn && e && (e.target === enterBtn || enterBtn.contains(e.target))) return;
+
+    audioIntro.muted = false;
+    audioIntro.loop = true;
+
+    if (audioIntro.paused) {
+        audioIntro.play().then(() => {
+            hideAudioToast();
+        }).catch(() => {
+            // Still blocked; keep the toast visible.
+            showAudioToast();
+        });
+    } else {
+        // Already playing (likely muted) — just unmute.
+        hideAudioToast();
+    }
+}
+
+function startIntroAudio(){
+    if (introStopped) return;
+    tryAutoplayMuted();
+
+    // Capture-phase listeners so we can unlock sound as early as possible on a user gesture.
+    document.addEventListener('pointerdown', unlockIntroAudio, true);
+    document.addEventListener('keydown', unlockIntroAudio, true);
+}
+
+function stopIntroAudio(){
+    if (introStopped) return;
+    introStopped = true;
+    hideAudioToast();
+    stopAudio(audioIntro);
+    document.removeEventListener('pointerdown', unlockIntroAudio, true);
+    document.removeEventListener('keydown', unlockIntroAudio, true);
+}
+
+// Start immediately (and retry on full load as well)
+startIntroAudio();
+window.addEventListener('load', startIntroAudio);
+
 
 
         // --- CAROUSEL DATA ---
@@ -702,6 +816,8 @@ function stopAudio(audio){
         // --- GLOBAL FUNCTIONS ---
 
         function showNarrative() {
+            // Stop intro bed on the first ENTER CLASS B4 click
+            stopIntroAudio();
             const settingScreen = document.getElementById('setting-screen');
             settingScreen.classList.add('fade-out');
             setTimeout(() => {
