@@ -473,12 +473,12 @@
         
         <div class="arcade-hud">
             <div>BOSS: EMPEROR DOMVROS</div>
-            <div id="boss-hp">HP: 8/8</div>
+            <div id="boss-hp">HP: 12/12</div>
         </div>
 
         <div class="dialogue-box" style="min-height: auto;">
             <span class="character-name">JOHN:</span>
-            "He is throwing rapid-fire questions about History and Grammar! We need 8 correct answers to block the attack!"
+            "He is throwing rapid-fire questions about History and Grammar! We need 12 correct answers to block the attack!"
         </div>
 
         <div id="arcade-question-box">
@@ -750,7 +750,13 @@ window.addEventListener('load', startIntroAudio);
             { q: "5. The Arabs ______ (introduce) spices and paper to the West.", opts: ["introduced", "did introduced"], ans: "introduced" },
             { q: "6. Look! Alex and Kostis ______ (run) to the walls right now!", opts: ["are running", "run"], ans: "are running" },
             { q: "7. While Simon was reading about the Themes, the bell ______ (ring).", opts: ["rang", "was ringing"], ans: "rang" },
-            { q: "8. Markos is the soldier ______ saved the Emperor.", opts: ["who", "whose"], ans: "who" }
+            { q: "8. Markos is the soldier ______ saved the Emperor.", opts: ["who", "whose"], ans: "who" },
+
+            // Present Perfect vs Simple Past (4 items)
+            { q: "9. I ______ (see) the Hagia Sophia last year.", opts: ["saw", "have seen"], ans: "saw" },
+            { q: "10. We ______ (study) Byzantium since September.", opts: ["have studied", "studied"], ans: "have studied" },
+            { q: "11. The Emperor ______ (make) a decision yesterday.", opts: ["made", "has made"], ans: "made" },
+            { q: "12. The class ______ (not finish) the challenge yet.", opts: ["hasn't finished", "didn't finish"], ans: "hasn't finished" }
         ];
         let arcadeStage = 0;
 
@@ -762,14 +768,14 @@ window.addEventListener('load', startIntroAudio);
             { target: "Soldiers who guarded the borders.", opts: ["Akrites", "Knights", "Themes"], ans: "Akrites" },
             { target: "A picture made of small colored stones.", opts: ["Fresco", "Mosaic", "Portrait"], ans: "Mosaic" },
             { target: "The Great Church built by Justinian.", opts: ["Hagia Sophia", "Pantheon", "Parthenon"], ans: "Hagia Sophia" },
-            
-            // Grammar (Simple Past vs Past Perfect)
-            { target: "When the police arrived, the thief ______ (escape).", opts: ["escaped", "has escaped", "had escaped"], ans: "had escaped" },
-            { target: "I was tired because I ______ (work) hard all day.", opts: ["worked", "had worked", "have worked"], ans: "had worked" },
-            { target: "She realized she ______ (lose) her book.", opts: ["had lost", "lost", "loses"], ans: "had lost" },
-            { target: "After the Emperor ______ (sign) the treaty, peace returned.", opts: ["signed", "had signed", "signing"], ans: "had signed" },
 
-            // PDF Terms (Buildings)
+            // Character Adjectives
+            { target: "Not afraid to face danger.", opts: ["Brave", "Lazy", "Shy"], ans: "Brave" },
+            { target: "Always supports friends and stays faithful.", opts: ["Loyal", "Jealous", "Careless"], ans: "Loyal" },
+            { target: "Eager to discover and ask questions.", opts: ["Curious", "Bored", "Rude"], ans: "Curious" },
+            { target: "Refuses to change their mind easily.", opts: ["Stubborn", "Gentle", "Quiet"], ans: "Stubborn" },
+
+            // Buildings / Places Vocabulary
             { target: "A large strong building with towers and high walls.", opts: ["Hut", "Castle", "Villa"], ans: "Castle" },
             { target: "A very tall building often found in cities.", opts: ["Skyscraper", "Tower", "Monument"], ans: "Skyscraper" },
             { target: "A house made of blocks of ice.", opts: ["Chalet", "Igloo", "Cave"], ans: "Igloo" },
@@ -814,6 +820,279 @@ window.addEventListener('load', startIntroAudio);
         let greekStage = 0;
 
         // --- GLOBAL FUNCTIONS ---
+
+// --- LEVEL 1 (LOGIC GRID) ---
+const seatCycle = ["", "BLUE", "GREEN", "YELLOW", "RED"];
+
+function resetLevel1(){
+    slots = [0,0,0,0];
+    for(let i=1;i<=4;i++){
+        const el = document.getElementById(`slot-${i}`);
+        if (!el) continue;
+        el.textContent = `[SEAT ${i}]`;
+        el.style.color = '#555';
+        el.style.borderColor = '#555';
+    }
+    const msg = document.getElementById('msg-1');
+    if (msg) msg.textContent = "";
+}
+
+function applySeatStyle(el, label){
+    if (!el) return;
+    if (!label){
+        el.style.color = '#555';
+        el.style.borderColor = '#555';
+        return;
+    }
+    if (label === "BLUE"){ el.style.color = 'var(--neon-blue)'; el.style.borderColor = 'var(--neon-blue)'; }
+    if (label === "GREEN"){ el.style.color = 'var(--bulb-green)'; el.style.borderColor = 'var(--bulb-green)'; }
+    if (label === "YELLOW"){ el.style.color = 'var(--bulb-yellow)'; el.style.borderColor = 'var(--bulb-yellow)'; }
+    if (label === "RED"){ el.style.color = 'var(--stranger-red)'; el.style.borderColor = 'var(--stranger-red)'; }
+}
+
+function cycleColor(pos){
+    const idx = pos - 1;
+    slots[idx] = (slots[idx] + 1) % seatCycle.length; // includes blank
+    const label = seatCycle[slots[idx]];
+    const el = document.getElementById(`slot-${pos}`);
+    if (!el) return;
+
+    if (!label){
+        el.textContent = `[SEAT ${pos}]`;
+    } else {
+        el.textContent = label;
+    }
+    applySeatStyle(el, label);
+}
+
+function checkLevel1(){
+    const a = seatCycle[slots[0]];
+    const b = seatCycle[slots[1]];
+    const c = seatCycle[slots[2]];
+    const d = seatCycle[slots[3]];
+
+    const ok = (a === "BLUE" && b === "GREEN" && c === "YELLOW" && d === "RED");
+    const msg = document.getElementById('msg-1');
+
+    if (ok){
+        if (msg) { msg.style.color = 'var(--bulb-green)'; msg.textContent = "CONNECTED! The riot calms down..."; }
+        setTimeout(() => enterLevel('level-2'), 900);
+    } else {
+        if (msg) { msg.style.color = 'var(--stranger-red)'; msg.textContent = "WRONG SEATING! The riot explodes!"; }
+        loseLife();
+    }
+}
+
+// --- LEVEL 2 (GRAMMAR SIEGE) ---
+function updateBossHP(){
+    const total = arcadeQuestions.length;
+    const remaining = Math.max(total - arcadeStage, 0);
+    const el = document.getElementById('boss-hp');
+    if (el) el.textContent = `HP: ${remaining}/${total}`;
+}
+
+function loadArcadeQuestion(){
+    const box = document.getElementById('arcade-question-box');
+    const msg = document.getElementById('msg-2');
+    if (msg) msg.textContent = "";
+    if (!box) return;
+
+    const total = arcadeQuestions.length;
+    if (arcadeStage >= total){
+        // Victory
+        box.innerHTML = "<div style='padding:10px; font-weight:bold;'>BOSS DEFEATED!</div>";
+        setTimeout(() => enterLevel('level-3'), 900);
+        return;
+    }
+
+    updateBossHP();
+
+    const item = arcadeQuestions[arcadeStage];
+    const optsHtml = item.opts.map(opt => {
+        const safe = opt.replace(/"/g, '&quot;');
+        return `<button style="margin:10px 8px; font-size:1rem; border-color:lime; color:lime;" onclick="submitArcadeAnswer(&quot;${safe}&quot;)">${opt}</button>`;
+    }).join("");
+
+    box.innerHTML = `
+        <div style="margin-bottom:14px;">${item.q}</div>
+        <div>${optsHtml}</div>
+    `;
+}
+
+function submitArcadeAnswer(choice){
+    const item = arcadeQuestions[arcadeStage];
+    const msg = document.getElementById('msg-2');
+
+    if (choice === item.ans){
+        arcadeStage++;
+        if (msg) { msg.style.color = 'var(--bulb-green)'; msg.textContent = "HIT! Keep going!"; }
+        setTimeout(loadArcadeQuestion, 450);
+    } else {
+        if (msg) { msg.style.color = 'var(--stranger-red)'; msg.textContent = "MISS! The Emperor strikes back!"; }
+        loseLife();
+    }
+    updateBossHP();
+}
+
+// --- LEVEL 3 (FORBIDDEN WORDS) ---
+function loadVocab(){
+    const wrap = document.getElementById('vocab-container');
+    const msg = document.getElementById('msg-3');
+    if (msg) msg.textContent = "";
+    if (!wrap) return;
+
+    if (vocabStage >= vocabChallenges.length){
+        wrap.innerHTML = "<div style='padding:10px; font-weight:bold; color:var(--bulb-green);'>RIFT SEALED!</div>";
+        setTimeout(() => enterLevel('level-4'), 900);
+        return;
+    }
+
+    const item = vocabChallenges[vocabStage];
+    const opts = item.opts.map(opt => {
+        const safe = opt.replace(/"/g, '&quot;');
+        return `<button style="margin:10px 8px; font-size:1rem;" onclick="submitVocab(&quot;${safe}&quot;)">${opt}</button>`;
+    }).join("");
+
+    wrap.innerHTML = `
+        <div style="width:90%; max-width:800px; margin:0 auto;">
+            <div style="margin-bottom:14px; font-size:1.1rem; border:1px solid #333; padding:12px; background:#111;">
+                <strong>Define:</strong> ${item.target}
+            </div>
+            <div>${opts}</div>
+            <div style="margin-top:10px; color:#888;">${vocabStage+1}/${vocabChallenges.length}</div>
+        </div>
+    `;
+}
+
+function submitVocab(choice){
+    const item = vocabChallenges[vocabStage];
+    const msg = document.getElementById('msg-3');
+
+    if (choice === item.ans){
+        vocabStage++;
+        if (msg) { msg.style.color = 'var(--bulb-green)'; msg.textContent = "CORRECT!"; }
+        setTimeout(loadVocab, 350);
+    } else {
+        if (msg) { msg.style.color = 'var(--stranger-red)'; msg.textContent = "WRONG! The rift widens!"; }
+        loseLife();
+    }
+}
+
+// --- LEVEL 4 (SCRAMBLE) ---
+function updateScrambleProgress(){
+    const el = document.getElementById('scramble-progress');
+    if (el) el.textContent = `${Math.min(scrambleStage+1, scrambleData.length)}/${scrambleData.length}`;
+}
+
+function renderScramble(){
+    const ansArea = document.getElementById('scramble-answer-area');
+    const bank = document.getElementById('scramble-bank');
+    if (!ansArea || !bank) return;
+
+    const correctLen = scrambleData[scrambleStage].correct.length;
+
+    // Render answer build
+    let htmlParts = [];
+    for (let i=0;i<correctLen;i++){
+        const w = scrambleUserBuild[i] || "";
+        htmlParts.push(`<span class="scramble-slot">${w || "&nbsp;"}</span>`);
+    }
+    ansArea.innerHTML = htmlParts.join(" ");
+
+    // Render bank
+    bank.innerHTML = "";
+    // Because some sentences contain repeated words (e.g., THE), treat the word bank as a multiset:
+    // rebuild from mixed and remove occurrences consumed by the user's build.
+    const pool = [...scrambleData[scrambleStage].mixed];
+    for (const w of scrambleUserBuild){
+        const idx = pool.indexOf(w);
+        if (idx >= 0) pool.splice(idx,1);
+    }
+
+    pool.forEach((w) => {
+        const btn = document.createElement('button');
+        btn.textContent = w;
+        btn.style.fontSize = '0.95rem';
+        btn.style.padding = '8px 12px';
+        btn.style.borderColor = '#fff';
+        btn.onclick = () => addScrambleWord(w);
+        bank.appendChild(btn);
+    });
+}
+
+function addScrambleWord(word){
+    const correctLen = scrambleData[scrambleStage].correct.length;
+    if (scrambleUserBuild.length >= correctLen) return;
+    scrambleUserBuild.push(word);
+    renderScramble();
+}
+
+function resetScramble(){
+    scrambleUserBuild = [];
+    const msg = document.getElementById('msg-4');
+    if (msg) msg.textContent = "";
+    updateScrambleProgress();
+    renderScramble();
+}
+
+function checkLevel4(){
+    const msg = document.getElementById('msg-4');
+    const correct = scrambleData[scrambleStage].correct.join(" ");
+    const attempt = scrambleUserBuild.join(" ");
+
+    if (attempt === correct){
+        if (msg) { msg.style.color = 'var(--bulb-green)'; msg.textContent = "DECODED!"; }
+        scrambleStage++;
+        if (scrambleStage >= scrambleData.length){
+            setTimeout(() => enterLevel('level-5'), 900);
+        } else {
+            setTimeout(() => resetScramble(), 450);
+        }
+    } else {
+        if (msg) { msg.style.color = 'var(--stranger-red)'; msg.textContent = "WRONG ORDER!"; }
+        loseLife();
+    }
+}
+
+// --- LEVEL 5 (GREEK TRUE/FALSE) ---
+function loadGreekQuestion(){
+    const box = document.getElementById('greek-question-box');
+    const prog = document.getElementById('greek-progress');
+    const msg = document.getElementById('msg-5');
+    if (msg) msg.textContent = "";
+
+    if (!box) return;
+
+    if (greekStage >= greekQuestions.length){
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('win-screen').classList.add('active');
+        return;
+    }
+
+    if (prog) prog.textContent = `${greekStage+1}/${greekQuestions.length}`;
+
+    box.innerHTML = `
+        <div style="font-size:1.15rem; line-height:1.5;">
+            ${greekQuestions[greekStage].q}
+        </div>
+    `;
+}
+
+function checkLevel5(choice){
+    const item = greekQuestions[greekStage];
+    const msg = document.getElementById('msg-5');
+
+    if (choice === item.ans){
+        greekStage++;
+        if (msg) { msg.style.color = 'var(--bulb-green)'; msg.textContent = "Σωστό!"; }
+        setTimeout(loadGreekQuestion, 350);
+    } else {
+        if (msg) { msg.style.color = 'var(--stranger-red)'; msg.textContent = "Λάθος!"; }
+        loseLife();
+    }
+}
+
+// --- GLOBAL FUNCTIONS ---
 
         function showNarrative() {
             // Stop intro bed on the first ENTER CLASS B4 click
@@ -896,7 +1175,7 @@ window.addEventListener('load', startIntroAudio);
                  document.getElementById('wheel-overlay-center').classList.remove('active');
             }
 
-            if(id === 'level-1') currentLives = 5;
+            if(id === 'level-1') { currentLives = 5; resetLevel1(); }
             updateLivesDisplay();
             
             if(id === 'level-2') { arcadeStage = 0; loadArcadeQuestion(); }
